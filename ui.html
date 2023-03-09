@@ -1,0 +1,54 @@
+<!DOCTYPE html>
+<html>
+  <head>
+    <meta charset="UTF-8" />
+    <title>Download Images</title>
+  </head>
+  <body>
+    <div class="container">
+      <h1>Download Images</h1>
+      <label for="directory-input">Choose a directory:</label>
+      <input type="text" id="directory-input" value="/" />
+      <button id="download-button">Download</button>
+    </div>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/jszip/3.6.0/jszip.min.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/file-saver@2.0.5/dist/FileSaver.min.js"></script>
+    <script>
+      const directoryInput = document.getElementById('directory-input')
+      const downloadButton = document.getElementById('download-button')
+
+      // send message to plugin with selected directory
+      function downloadImages() {
+        const directory = directoryInput.value
+        parent.postMessage({ pluginMessage: { type: 'directory_selected', data: directory } }, '*')
+      }
+
+      // handle messages from plugin
+      onmessage = async event => {
+        const message = event.data.pluginMessage
+        if (message.type === 'download') {
+          // create a zip file with all images
+          const { images, directory } = message.data
+          let zip = new JSZip()
+          images.forEach(asset => {
+            // const extensionLower = asset.extension.toLowerCase()
+            let blob = new Blob([asset.data], { type: `image/png` })
+            zip.file(`${asset.name}.png`, blob, { base64: true })
+          })
+          const blob = await zip.generateAsync({ type: 'blob' })
+          const url = window.URL.createObjectURL(blob)
+          const link = document.createElement('a')
+          link.href = url
+          link.download = 'Export.zip'
+          link.click()
+
+          // send message to plugin when download is complete
+          parent.postMessage({ pluginMessage: { type: 'download_complete' } }, '*')
+        }
+      }
+
+      // initialize the UI
+      downloadButton.addEventListener('click', downloadImages)
+    </script>
+  </body>
+</html>
